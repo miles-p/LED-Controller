@@ -15,7 +15,7 @@ CRGB leds[NUM_LEDS];
 
 // Add at top of file with other variables
 unsigned long lastShowTime = 0;
-const unsigned long SHOW_INTERVAL = 16; // ~60fps (adjust as needed)
+const unsigned long SHOW_INTERVAL = 30; // ~60fps (adjust as needed)
 
 void setup() {
   Ethernet.begin(mac, ip);
