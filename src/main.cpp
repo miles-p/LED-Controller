@@ -1,16 +1,26 @@
+// Artnet LED Decoder
+// by Miles Punch
+
+// All Rights Reserved 2025
+// Licensed under the GNU GPL License.
+
+// Required libraries
 #include <SPI.h>
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 #include <FastLED.h>
 
+// Defined constants
 #define LED_PIN     6
 #define NUM_LEDS    300
 #define ARTNET_PORT 6454
-#define START_UNIVERSE 0
+#define START_UNIVERSE 0 // we may not want to begin on universe 0 (remember that artnet is 0-indexed)
 
+// Static IP and MAC address
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 1, 50);
 
+// Instances of Ethernet and FastLED
 EthernetUDP Udp;
 CRGB leds[NUM_LEDS];
 
