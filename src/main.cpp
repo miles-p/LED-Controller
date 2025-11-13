@@ -41,14 +41,20 @@ void artnet_callback(const uint8_t *data, uint16_t size, const ArtDmxMetadata &m
     Serial.print(data[2]);
     Serial.println("...]");
   }
-  if (metadata.universe == START_UNIVERSE) {
-    for (int i = 0; i < 170; i++) {
-      leds[i].r = data[i * 3 + 0];
-      leds[i].g = data[i * 3 + 1];
-      leds[i].b = data[i * 3 + 2];
+  // Calculate the starting LED index for this universe
+  int universeOffset = (metadata.universe - START_UNIVERSE) * 170;
+  
+  // Update LEDs for this universe (170 LEDs per universe, 3 bytes per LED)
+  int ledsInThisPacket = min(size / 3, 170);
+  for (int i = 0; i < ledsInThisPacket; i++) {
+    int ledIndex = universeOffset + i;
+    if (ledIndex < NUM_LEDS) {
+      leds[ledIndex].r = data[i * 3 + 0];
+      leds[ledIndex].g = data[i * 3 + 1];
+      leds[ledIndex].b = data[i * 3 + 2];
     }
-    FastLED.show();
   }
+  FastLED.show();
 }
 
 void init_leds() {
