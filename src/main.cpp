@@ -21,6 +21,11 @@
 #define LEDS_PER_UNIVERSE 170
 #define CHANNELS_PER_UNIVERSE (LEDS_PER_UNIVERSE * 3)
 
+// Tracking for smart refresh
+const uint8_t NUM_UNIVERSES = (NUM_LEDS + LEDS_PER_UNIVERSE - 1) / LEDS_PER_UNIVERSE;
+const uint8_t ALL_UNI_MASK = (1 << NUM_UNIVERSES) - 1;
+
+
 // Static IP and MAC address
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 50); // Set your desired static IP here
@@ -28,61 +33,43 @@ ArtnetEtherReceiver artnet;
 
 /// @brief Array to hold the LED data
 CRGB leds[NUM_LEDS];
-
-// Tracking for smart refresh
-const uint8_t NUM_UNIVERSES = (NUM_LEDS + LEDS_PER_UNIVERSE - 1) / LEDS_PER_UNIVERSE;
 uint8_t universesReceived = 0;
 unsigned long lastShowTime = 0;
 const unsigned long MIN_SHOW_INTERVAL = 8; // ~125fps max
 
-void artnet_callback(const uint8_t *data, uint16_t size, const ArtDmxMetadata &metadata, const ArtNetRemoteInfo &remote) {
-  // Calculate the starting LED index for this universe
-  uint16_t relativeUniverse = metadata.universe - START_UNIVERSE;
-  
-  // Ignore universes outside our range
-  if (relativeUniverse >= NUM_UNIVERSES) return;
-  
-  uint16_t startLED = relativeUniverse * LEDS_PER_UNIVERSE;
-  uint16_t ledsToUpdate = (size < CHANNELS_PER_UNIVERSE) ? size / 3 : LEDS_PER_UNIVERSE;
-  uint16_t endLED = startLED + ledsToUpdate;
-  
-  // Clamp to actual LED count
-  if (endLED > NUM_LEDS) endLED = NUM_LEDS;
-  
-  // Fast direct memory copy - optimized loop
-  const uint8_t *src = data;
-  CRGB *dest = &leds[startLED];
-  
-  for (uint16_t i = startLED; i < endLED; i++) {
-    dest->r = *src++;
-    dest->g = *src++;
-    dest->b = *src++;
-    dest++;
-  }
-  
-  // Track universe and only show when all received or after interval
-  universesReceived |= (1 << relativeUniverse);
-  uint8_t allUniversesMask = (1 << NUM_UNIVERSES) - 1;
+void artnet_callback(
+  const uint8_t *data, uint16_t size,
+  const ArtDmxMetadata &metadata,
+  const ArtNetRemoteInfo &remote
+) {
+  uint8_t rel = metadata.universe - START_UNIVERSE;
+  if (rel >= NUM_UNIVERSES) return;
+
+  uint16_t start = rel * LEDS_PER_UNIVERSE;
+  uint16_t count = (size / 3);
+  if (count > LEDS_PER_UNIVERSE) count = LEDS_PER_UNIVERSE;
+  if (start + count > NUM_LEDS) count = NUM_LEDS - start;
+
+  memcpy(&leds[start], data, count * 3);
+
+  universesReceived |= (1 << rel);
   unsigned long now = millis();
-  
-  if ((universesReceived == allUniversesMask) || (now - lastShowTime >= MIN_SHOW_INTERVAL)) {
+
+  if (universesReceived == ALL_UNI_MASK &&
+      now - lastShowTime >= MIN_SHOW_INTERVAL) {
+
     FastLED.show();
     lastShowTime = now;
     universesReceived = 0;
-    
-    #if DEBUG
-    Serial.print("U");
-    Serial.print(metadata.universe);
-    Serial.print(" SHOW (");
-    Serial.print(endLED - startLED);
-    Serial.println(" LEDs)");
-    #endif
   }
 }
+
 
 void init_leds() {
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setMaxRefreshRate(0); // Remove artificial frame rate limit
+  FastLED.setDither(false);
+  FastLED.setCorrection(UncorrectedColor);
   FastLED.clear();
   FastLED.show();
 }
