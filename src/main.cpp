@@ -89,10 +89,11 @@ void init_networking() {
 }
 
 void setup() {
-  if (DEBUG) {
-    Serial.begin(115200);
-    Serial.println("Starting Artnet LED Decoder");
-  }
+  #if DEBUG
+  Serial.begin(115200);
+  Serial.println("Starting Artnet LED Decoder");
+  #endif
+  
   init_leds();
   init_networking();
 }
