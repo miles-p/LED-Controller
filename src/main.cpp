@@ -4,7 +4,7 @@
 // All Rights Reserved 2025
 // Licensed under the GNU GPL License.
 
-#define DEBUG 0 // 1: DEBUG at 115200, 0: No DEBUG
+#define DEBUG 1 // 1: DEBUG at 115200, 0: No DEBUG
 
 // Required libraries
 #include <SPI.h>
@@ -15,7 +15,7 @@
 
 // Defined constants
 #define LED_PIN     6
-#define NUM_LEDS    300
+#define NUM_LEDS    33
 #define ARTNET_PORT 6454
 #define START_UNIVERSE 0 // we may not want to begin on universe 0 (remember that artnet is 0-indexed)
 #define LEDS_PER_UNIVERSE 170
@@ -54,6 +54,13 @@ void artnet_callback(
 
   universesReceived |= (1 << rel);
   unsigned long now = millis();
+
+  #if DEBUG
+  Serial.print("Universe: ");
+  Serial.print(metadata.universe);
+  Serial.print(" | Received: 0x");
+  Serial.println(universesReceived, HEX);
+  #endif
 
   if (universesReceived == ALL_UNI_MASK &&
       now - lastShowTime >= MIN_SHOW_INTERVAL) {
