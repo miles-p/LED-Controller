@@ -4,7 +4,7 @@
 // All Rights Reserved 2025
 // Licensed under the GNU GPL License.
 
-#define DEBUG 1 // 1: DEBUG at 115200, 0: No DEBUG
+#define DEBUG 0 // 1: DEBUG at 115200, 0: No DEBUG
 
 // Required libraries
 #include <SPI.h>
@@ -14,7 +14,9 @@
 #include <FastLED.h>
 
 // Defined constants
-#define LED_PIN     6
+#define WS2812_DATA_PIN     6
+#define NETWORK_STATUS_PIN 3
+#define LED_WRITE_STATUS_PIN 4
 #define NUM_LEDS    33
 #define ARTNET_PORT 6454
 #define START_UNIVERSE 0 // we may not want to begin on universe 0 (remember that artnet is 0-indexed)
@@ -24,7 +26,6 @@
 // Tracking for smart refresh
 const uint8_t NUM_UNIVERSES = (NUM_LEDS + LEDS_PER_UNIVERSE - 1) / LEDS_PER_UNIVERSE;
 const uint8_t ALL_UNI_MASK = (1 << NUM_UNIVERSES) - 1;
-
 
 // Static IP and MAC address
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
@@ -37,11 +38,21 @@ uint8_t universesReceived = 0;
 unsigned long lastShowTime = 0;
 const unsigned long MIN_SHOW_INTERVAL = 8; // ~125fps max
 
-void artnet_callback(
-  const uint8_t *data, uint16_t size,
-  const ArtDmxMetadata &metadata,
-  const ArtNetRemoteInfo &remote
-) {
+void led_status(String led, bool state) {
+  #if DEBUG
+  Serial.print(led);
+  Serial.print(" LED is now ");
+  Serial.println(state ? "ON" : "OFF");
+  #endif
+
+  if (led == "network") {
+    digitalWrite(NETWORK_STATUS_PIN, state ? HIGH : LOW);
+  } else if (led == "led_write") {
+    digitalWrite(LED_WRITE_STATUS_PIN, state ? HIGH : LOW);
+  }
+}
+
+void artnet_callback( const uint8_t *data, uint16_t size, const ArtDmxMetadata &metadata, const ArtNetRemoteInfo &remote ) {
   uint8_t rel = metadata.universe - START_UNIVERSE;
   if (rel >= NUM_UNIVERSES) return;
 
@@ -62,27 +73,49 @@ void artnet_callback(
   Serial.println(universesReceived, HEX);
   #endif
 
-  if (universesReceived == ALL_UNI_MASK &&
-      now - lastShowTime >= MIN_SHOW_INTERVAL) {
-
+  if (universesReceived == ALL_UNI_MASK && now - lastShowTime >= MIN_SHOW_INTERVAL) {
+    led_status("led_write", true);
     FastLED.show();
     lastShowTime = now;
     universesReceived = 0;
+    led_status("led_write", false);
   }
 }
 
-
 void init_leds() {
-  FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
+  // initialize FastLED
+  FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setMaxRefreshRate(0); // Remove artificial frame rate limit
   FastLED.setDither(false);
   FastLED.setCorrection(UncorrectedColor);
   FastLED.clear();
   FastLED.show();
+
+  // initialize status pins
+  pinMode(NETWORK_STATUS_PIN, OUTPUT);
+  pinMode(LED_WRITE_STATUS_PIN, OUTPUT);
 }
 
 void init_networking() {
   Ethernet.begin(mac, ip);
+
+  #if DEBUG
+  Serial.print("Ethernet initialized with IP: ");
+  Serial.println(Ethernet.localIP());
+  Serial.print("Subnet Mask: ");
+  Serial.println(Ethernet.subnetMask());
+  Serial.print("Gateway IP: ");
+  Serial.println(Ethernet.gatewayIP());
+  Serial.print("Link Status: ");
+  Serial.println(Ethernet.linkStatus() == LinkON ? "LinkON" : "LinkOFF");
+  #endif
+
+  if (Ethernet.linkStatus() == LinkOFF) {
+    led_status("network", false);
+    } else {
+    led_status("network", true);
+  }
+
   delay(100);
   artnet.begin(ARTNET_PORT);
   artnet.subscribeArtDmx(artnet_callback);
