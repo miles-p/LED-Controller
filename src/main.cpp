@@ -195,5 +195,15 @@ void setup() {
 }
 
 void loop() {
-  artnet.parse();
+  if (TEST_MODE) {
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CRGB::Red;
+    }
+
+    FastLED.show();
+    while (1); // halt!
+
+  } else {
+    artnet.parse();
+  }
 }

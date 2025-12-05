@@ -1,6 +1,7 @@
 // config switches
 #define DEBUG 0 // 1: DEBUG at 115200, 0: No DEBUG
 #define DHCP 1 // 1: Use DHCP, 0: Use static IP as defined in main
+#define TEST_MODE 1 // 1: Just run some LEDs on Red, 0: normal behaviour
 
 // Defined constants
 #define WS2812_DATA_PIN     6
