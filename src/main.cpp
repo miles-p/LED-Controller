@@ -4,8 +4,6 @@
 // All Rights Reserved 2025
 // Licensed under the GNU GPL License.
 
-#define DEBUG 0 // 1: DEBUG at 115200, 0: No DEBUG
-
 // Required libraries
 #include <SPI.h>
 #include <Ethernet.h>
@@ -13,15 +11,7 @@
 #include <ArtnetEther.h>
 #include <FastLED.h>
 
-// Defined constants
-#define WS2812_DATA_PIN     6
-#define NETWORK_STATUS_PIN 3
-#define LED_WRITE_STATUS_PIN 4
-#define NUM_LEDS    33
-#define ARTNET_PORT 6454
-#define START_UNIVERSE 0 // we may not want to begin on universe 0 (remember that artnet is 0-indexed)
-#define LEDS_PER_UNIVERSE 170
-#define CHANNELS_PER_UNIVERSE (LEDS_PER_UNIVERSE * 3)
+#include "main.h"
 
 // Tracking for smart refresh
 const uint8_t NUM_UNIVERSES = (NUM_LEDS + LEDS_PER_UNIVERSE - 1) / LEDS_PER_UNIVERSE;
@@ -82,6 +72,61 @@ void artnet_callback( const uint8_t *data, uint16_t size, const ArtDmxMetadata &
   }
 }
 
+void led_hello() {
+  // do a little dance to say hello
+  digitalWrite(LED_WRITE_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, LOW);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, LOW);
+  delay(200);
+
+  digitalWrite(NETWORK_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(NETWORK_STATUS_PIN, LOW);
+  delay(200);
+  digitalWrite(NETWORK_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(NETWORK_STATUS_PIN, LOW);
+  delay(200);
+
+  digitalWrite(LED_WRITE_STATUS_PIN, HIGH);
+  digitalWrite(NETWORK_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, LOW);
+  digitalWrite(NETWORK_STATUS_PIN, LOW);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, HIGH);
+  digitalWrite(NETWORK_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, LOW);
+  digitalWrite(NETWORK_STATUS_PIN, LOW);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, HIGH);
+  digitalWrite(NETWORK_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, LOW);
+  digitalWrite(NETWORK_STATUS_PIN, LOW);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, HIGH);
+  digitalWrite(NETWORK_STATUS_PIN, HIGH);
+  delay(200);
+  digitalWrite(LED_WRITE_STATUS_PIN, LOW);
+  digitalWrite(NETWORK_STATUS_PIN, LOW);
+  delay(200);
+}
+
+void led_oh_shit(int led_pin) {
+  while(1) {
+    digitalWrite(led_pin, HIGH);
+    delay(250);
+    digitalWrite(led_pin, LOW);
+    delay(250);
+  }
+}
+
 void init_leds() {
   // initialize FastLED
   FastLED.addLeds<WS2812B, WS2812_DATA_PIN, GRB>(leds, NUM_LEDS);
@@ -94,10 +139,27 @@ void init_leds() {
   // initialize status pins
   pinMode(NETWORK_STATUS_PIN, OUTPUT);
   pinMode(LED_WRITE_STATUS_PIN, OUTPUT);
+
+  led_hello();
 }
 
 void init_networking() {
-  Ethernet.begin(mac, ip);
+  if (DHCP) {
+    if (Ethernet.begin(mac)) {
+      // DHCP configured successfully :)
+    } else {
+      // shit shit shit shit shit
+      led_oh_shit(NETWORK_STATUS_PIN);
+    }
+  } else {
+    Ethernet.begin(mac, ip);
+  }
+
+  if (Ethernet.linkStatus() == LinkON) {
+    led_status("network", true);
+  } else {
+    led_oh_shit(NETWORK_STATUS_PIN);
+  }
 
   #if DEBUG
   Serial.print("Ethernet initialized with IP: ");
@@ -109,12 +171,6 @@ void init_networking() {
   Serial.print("Link Status: ");
   Serial.println(Ethernet.linkStatus() == LinkON ? "LinkON" : "LinkOFF");
   #endif
-
-  if (Ethernet.linkStatus() == LinkOFF) {
-    led_status("network", false);
-    } else {
-    led_status("network", true);
-  }
 
   delay(100);
   artnet.begin(ARTNET_PORT);
