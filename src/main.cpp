@@ -4,25 +4,16 @@
 // All Rights Reserved 2025
 // Licensed under the GNU GPL License.
 
-// Required libraries
-#include <SPI.h>
-#include <Ethernet.h>
-#include <EthernetUdp.h>
-#include <ArtnetEther.h>
-#include <FastLED.h>
-
 #include "main.h"
 
-// Tracking for smart refresh
+// Global variable definitions
 const uint8_t NUM_UNIVERSES = (NUM_LEDS + LEDS_PER_UNIVERSE - 1) / LEDS_PER_UNIVERSE;
 const uint8_t ALL_UNI_MASK = (1 << NUM_UNIVERSES) - 1;
 
-// Static IP and MAC address
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 50); // Set your desired static IP here
+IPAddress ip(192, 168, 1, 50);
 ArtnetEtherReceiver artnet;
 
-/// @brief Array to hold the LED data
 CRGB leds[NUM_LEDS];
 uint8_t universesReceived = 0;
 unsigned long lastShowTime = 0;
